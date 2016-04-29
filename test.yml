@@ -1,0 +1,29 @@
+---
+- hosts: testserver
+  sudo: True
+  tasks:
+   - name: updates a server
+     apt: update_cache=yes
+   - name: upgrade a server
+     apt: upgrade=dist
+     notify: reboot sequence
+      
+  handlers:
+    - name: reboot sequence
+      changed_when: "true"
+      debug: msg='Rebooting the server'
+      notify:
+        - reboot system
+        - waiting for server to come back
+        - get uptime
+    - name: reboot system
+      shell: sleep 2 && shutdown -r now "Ansible package updates triggered"
+      async: 1
+      poll: 0
+      ignore_errors: true
+    - name: waiting for server to come back
+      local_action: wait_for host={{ inventory_hostname }} state=started port=22 delay=60 timeout=180 connect_timeout=15
+      sudo: false
+    - name: get uptime
+      action: command uptime
+      sudo: false
